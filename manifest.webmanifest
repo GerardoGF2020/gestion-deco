@@ -1,0 +1,11 @@
+{
+  "name": "Gestión Deco",
+  "short_name": "Gestión Deco",
+  "description": "Catálogo, compras, stock, ventas y administración para tienda de decoración",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f6f3ee",
+  "theme_color": "#2b2622",
+  "lang": "es-AR",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

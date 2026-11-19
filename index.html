@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gestión Deco</title>
+  <meta name="theme-color" content="#2b2622">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <nav id="nav" class="nav" aria-label="Módulos"></nav>
+    <div class="content">
+      <header class="topbar">
+        <h1 id="title"></h1>
+        <button id="syncBtn" class="sync" type="button"></button>
+      </header>
+      <main id="view"></main>
+    </div>
+  </div>
+  <div id="modalRoot"></div>
+  <div id="toasts"></div>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
