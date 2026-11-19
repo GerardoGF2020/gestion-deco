@@ -120,3 +120,178 @@ textarea { resize: vertical; }
   .overlay { align-items: flex-end; padding: 0; } .modal, .modal.wide { width: 100%; border-radius: 18px 18px 0 0; max-height: 94vh; }
   .sync-txt { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+
+
+/* ==========================================================================
+   ESTILOS ADICIONALES: AUTENTICACIÓN, WHATSAPP & MERCADO INMOBILIARIO
+   ========================================================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Botón Compartir App por WhatsApp en la Barra Superior */
+.btn-wa-topbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #16a34a;
+  color: #ffffff !important;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  border-radius: 99px;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.btn-wa-topbar:hover {
+  background-color: #15803d;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
+  transform: translateY(-1px);
+}
+@media (max-width: 640px) {
+  .wa-btn-label { display: none; }
+  .btn-wa-topbar { padding: 8px 10px; }
+}
+
+/* Tarjeta de Usuario en la Barra Lateral */
+.user-sidebar-card {
+  margin-top: auto;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 12px 10px;
+}
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #7c3aed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.user-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-role {
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  text-transform: capitalize;
+}
+.btn-user-action {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.12);
+  border: 0;
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-user-action:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.btn-user-action.danger:hover {
+  background: #dc2626;
+}
+
+/* Modal de Autenticación / Login / Registro */
+.login-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.login-modal-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  width: min(440px, 100%);
+  max-height: 94vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  padding: 26px 24px;
+  box-sizing: border-box;
+}
+.login-modal-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.login-modal-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: #b4573a;
+  color: #ffffff;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  box-shadow: 0 8px 16px rgba(180, 87, 58, 0.3);
+}
+.login-modal-tabs {
+  display: flex;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 18px;
+}
+.login-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  padding: 10px 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.login-tab-btn.active {
+  color: #b4573a;
+  border-bottom-color: #b4573a;
+}
+.login-error-box {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.login-success-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+  font-size: 0.82rem;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  text-align: center;
+}
