@@ -3,14 +3,23 @@ import * as drive from './core/drive.js';
 import * as auth from './core/auth.js';
 import { h, toast, openModal } from './core/ui.js';
 import { buildSeed } from './data/seed-catalogo.js';
+import inicio from './modules/inicio.js';
+import ventas from './modules/ventas.js';
+import stock from './modules/stock.js';
+import compras from './modules/compras.js';
 import catalogo from './modules/catalogo.js';
-import ajustes from './modules/ajustes.js';
 import admin from './modules/admin.js';
-import { compras, stock, ventas } from './modules/pendientes.js';
+import ajustes from './modules/ajustes.js';
 
-const APP_URL = 'https://gerardogf2020.github.io/gestion-deco/';
+const PUBLIC_APP_URL = 'https://is.gd/gestiondeco';
+const getAppUrl = () => {
+  if (location.origin.includes('github.io')) {
+    return 'https://is.gd/gestiondeco';
+  }
+  return PUBLIC_APP_URL;
+};
 
-const MODULES = [catalogo, compras, stock, ventas, admin, ajustes];
+const MODULES = [inicio, ventas, stock, compras, catalogo, admin, ajustes];
 
 const nav = document.getElementById('nav');
 const view = document.getElementById('view');
@@ -28,7 +37,7 @@ function seedIfEmpty() {
   store.setLocal({ seeded: true });
 }
 
-const currentId = () => location.hash.replace(/^#\//, '') || 'catalogo';
+const currentId = () => location.hash.replace(/^#\//, '') || 'inicio';
 
 function waLink(tel, mensaje) {
   const cleanTel = (tel || '').replace(/\D/g, '');
@@ -130,7 +139,7 @@ function initTopbar() {
       class: 'btn-wa-topbar',
       target: '_blank',
       rel: 'noopener',
-      href: waLink('', `¡Hola! Te comparto la aplicación de Gestión Deco:\n🔗 ${APP_URL}\n(Regístrate en "Solicitar Cuenta" para habilitar tu acceso).`),
+      href: waLink('', `¡Hola! Te comparto la aplicación de Gestión Deco:\n🔗 ${getAppUrl()}\n(Regístrate en "Solicitar Cuenta" para habilitar tu acceso).`),
       title: 'Compartir enlace por WhatsApp con nuevos usuarios'
     },
       h('span', {}, '📱'),
@@ -166,14 +175,14 @@ syncBtn.addEventListener('click', () => {
   else drive.sync();
 });
 
-// ---------- MODAL PROFESIONAL DE LOGIN / REGISTRO ----------
+// ---------- MODAL PROFESIONAL DE LOGIN / REGISTRO / AUTOSERVICIO ----------
 function mostrarPantallaLogin() {
   document.getElementById('loginOverlay')?.remove();
 
   const overlay = h('div', { id: 'loginOverlay', class: 'login-modal-overlay' });
   const card = h('div', { class: 'login-modal-card animate-fadeIn' });
 
-  let tabActiva = 'login'; // 'login' | 'registro'
+  let tabActiva = 'login'; // 'login' | 'registro' | 'recuperar'
 
   function renderModal() {
     card.replaceChildren();
@@ -194,7 +203,11 @@ function mostrarPantallaLogin() {
       h('button', {
         class: `login-tab-btn ${tabActiva === 'registro' ? 'active' : ''}`,
         onclick: () => { tabActiva = 'registro'; renderModal(); }
-      }, '📝 Solicitar Cuenta Nueva')
+      }, '📝 Solicitar Cuenta'),
+      h('button', {
+        class: `login-tab-btn ${tabActiva === 'recuperar' ? 'active' : ''}`,
+        onclick: () => { tabActiva = 'recuperar'; renderModal(); }
+      }, '❓ Olvidé mi Clave')
     );
 
     card.append(header, tabs);
@@ -246,6 +259,18 @@ function mostrarPantallaLogin() {
         )
       );
 
+      const linkOlvido = h('div', { style: 'margin-top: 12px; text-align: center;' },
+        h('a', {
+          href: '#',
+          style: 'font-size: 0.82rem; color: #64748b; text-decoration: underline;',
+          onclick: (e) => {
+            e.preventDefault();
+            tabActiva = 'recuperar';
+            renderModal();
+          }
+        }, '¿Olvidaste tu contraseña? Recuperar con código')
+      );
+
       card.append(
         h('div', { style: 'text-align: left;' },
           h('label', { style: 'font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;' }, 'Usuario o Correo:'),
@@ -254,11 +279,12 @@ function mostrarPantallaLogin() {
           inPass,
           errorMsg,
           btnEntrar,
+          linkOlvido,
           accesoRapido
         )
       );
 
-    } else {
+    } else if (tabActiva === 'registro') {
       // Formulario Registro Público
       const inNombre = h('input', { type: 'text', placeholder: 'Ej: Laura Gómez', style: 'margin-bottom: 10px;' });
       const inEmail = h('input', { type: 'email', placeholder: 'laura@ejemplo.com', style: 'margin-bottom: 10px;' });
@@ -272,11 +298,11 @@ function mostrarPantallaLogin() {
         h('option', { value: 'lectura' }, '📄 Solo lectura')
       );
 
-      const msgBox = h('div', { style: 'display: none; padding: 10px; border-radius: 8px; font-size: 0.82rem; margin-bottom: 12px;' });
+      const msgBox = h('div', { style: 'display: none; padding: 12px; border-radius: 8px; font-size: 0.82rem; margin-bottom: 12px;' });
 
       const infoAviso = h('div', { style: 'background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px; border-radius: 8px; font-size: 0.78rem; margin-bottom: 12px; text-align: left;' },
         h('strong', {}, 'ℹ️ Aprobación Requerida: '),
-        'Al enviar tus datos, el Administrador (gerardocggf@gmail.com) recibirá la solicitud para darte el alta y habilitar tu acceso.'
+        'El Administrador autorizará tu cuenta la primera vez. Una vez aprobada, podrás gestionar tu clave tú mismo.'
       );
 
       const btnSolicitar = h('button', {
@@ -288,7 +314,7 @@ function mostrarPantallaLogin() {
             btnSolicitar.disabled = true;
             btnSolicitar.textContent = 'Enviando solicitud…';
 
-            await auth.solicitarRegistro({
+            const nuevoUser = await auth.solicitarRegistro({
               nombre: inNombre.value,
               email: inEmail.value,
               telefono: inTel.value,
@@ -298,12 +324,20 @@ function mostrarPantallaLogin() {
             });
 
             msgBox.className = 'login-success-box';
-            msgBox.innerHTML = '<strong>✅ ¡Solicitud enviada con éxito!</strong><br>El Administrador revisará tus datos para autorizar tu cuenta.';
+            msgBox.replaceChildren(
+              h('div', { style: 'font-weight:bold; font-size:0.95rem; margin-bottom:4px;' }, '✅ ¡Solicitud enviada con éxito!'),
+              h('div', {}, `Usuario asignado: <strong>${nuevoUser.username}</strong>`),
+              h('div', { style: 'margin-top:10px; padding:10px; background:#fef3c7; border:1px solid #f59e0b; border-radius:8px; color:#92400e;' },
+                h('div', { style: 'font-weight:bold; font-size:0.8rem;' }, '🔑 TU CÓDIGO DE RECUPERACIÓN PERSONAL:'),
+                h('div', { class: 'mono font-bold', style: 'font-size:1.15rem; color:#78350f; letter-spacing:1px; margin:4px 0;' }, nuevoUser.codigoRecuperacion),
+                h('div', { style: 'font-size:0.75rem;' }, 'Anota este código. Si olvidas tu clave, te permitirá recuperarla por ti mismo sin molestar al administrador.')
+              )
+            );
             msgBox.style.display = 'block';
 
             inNombre.value = ''; inEmail.value = ''; inTel.value = ''; inUser.value = ''; inPass.value = '';
             btnSolicitar.disabled = false;
-            btnSolicitar.textContent = 'Solicitud Enviada';
+            btnSolicitar.textContent = 'Solicitud Enviada ✓';
           } catch (e) {
             msgBox.className = 'login-error-box';
             msgBox.textContent = e.message;
@@ -333,6 +367,74 @@ function mostrarPantallaLogin() {
           btnSolicitar
         )
       );
+
+    } else if (tabActiva === 'recuperar') {
+      // Formulario Recuperar Clave con Código de Autoservicio
+      const inUserRec = h('input', { type: 'text', placeholder: 'Tu usuario o correo', style: 'margin-bottom: 10px;' });
+      const inCodRec = h('input', { type: 'text', placeholder: 'ABCD-EFGH-JKLM', class: 'mono', style: 'margin-bottom: 10px; text-transform: uppercase;' });
+      const inNuevaPass = h('input', { type: 'password', placeholder: 'Nueva contraseña (mínimo 4 caracteres)', style: 'margin-bottom: 10px;' });
+      const inConfirmPass = h('input', { type: 'password', placeholder: 'Repite la nueva contraseña', style: 'margin-bottom: 14px;' });
+      const msgRec = h('div', { style: 'display: none; padding: 10px; border-radius: 8px; font-size: 0.82rem; margin-bottom: 12px;' });
+
+      const infoRec = h('div', { style: 'background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 8px; font-size: 0.78rem; margin-bottom: 12px; text-align: left; color: #475569;' },
+        'Ingresa tu usuario y el código de 12 dígitos que te fue asignado para redefinir tu contraseña de forma autónoma.'
+      );
+
+      const btnRecuperar = h('button', {
+        class: 'btn primary',
+        style: 'width: 100%; height: 46px; font-weight: bold; border-radius: 10px;',
+        onclick: async () => {
+          try {
+            msgRec.style.display = 'none';
+            if (!inNuevaPass.value || inNuevaPass.value.length < 4) {
+              throw new Error('La contraseña debe tener al menos 4 caracteres.');
+            }
+            if (inNuevaPass.value !== inConfirmPass.value) {
+              throw new Error('Las nuevas contraseñas no coinciden.');
+            }
+            btnRecuperar.disabled = true;
+            btnRecuperar.textContent = 'Actualizando contraseña…';
+
+            const nuevoCod = await auth.recuperarConCodigo(inUserRec.value, inCodRec.value, inNuevaPass.value);
+
+            msgRec.className = 'login-success-box';
+            msgRec.replaceChildren(
+              h('div', { style: 'font-weight:bold;' }, '✅ ¡Contraseña restablecida con éxito!'),
+              h('div', { style: 'margin-top:6px; font-size:0.8rem;' }, 'Ya puedes iniciar sesión con tu nueva clave.'),
+              h('div', { style: 'margin-top:8px; padding:8px; background:#fef3c7; border:1px solid #f59e0b; border-radius:6px; color:#92400e; font-size:0.75rem;' },
+                'Tu nuevo código de recuperación para la próxima vez es: ',
+                h('span', { class: 'mono font-bold' }, nuevoCod)
+              )
+            );
+            msgRec.style.display = 'block';
+            btnRecuperar.textContent = 'Ir a Iniciar Sesión';
+            btnRecuperar.disabled = false;
+            btnRecuperar.onclick = () => { tabActiva = 'login'; renderModal(); };
+          } catch (e) {
+            msgRec.className = 'login-error-box';
+            msgRec.textContent = e.message;
+            msgRec.style.display = 'block';
+            btnRecuperar.disabled = false;
+            btnRecuperar.textContent = 'Restablecer Contraseña';
+          }
+        }
+      }, 'Restablecer Contraseña');
+
+      card.append(
+        h('div', { style: 'text-align: left;' },
+          infoRec,
+          h('label', { style: 'font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;' }, 'Usuario o Correo:'),
+          inUserRec,
+          h('label', { style: 'font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;' }, 'Código de Recuperación:'),
+          inCodRec,
+          h('label', { style: 'font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;' }, 'Nueva Contraseña:'),
+          inNuevaPass,
+          h('label', { style: 'font-size: 0.8rem; font-weight: 600; color: #475569; display: block; margin-bottom: 2px;' }, 'Confirmar Nueva Contraseña:'),
+          inConfirmPass,
+          msgRec,
+          btnRecuperar
+        )
+      );
     }
   }
 
@@ -357,46 +459,65 @@ function abrirModalCambiarPassword() {
     h('label', {}, 'Confirmar nueva contraseña:', inConfirm)
   );
 
-  const close = openModal('🔑 Cambiar mi contraseña', modalBody, [
-    h('button', {
-      class: 'btn primary',
-      onclick: async () => {
-        if (!inNew.value || inNew.value.length < 4) {
-          toast('La contraseña debe tener al menos 4 caracteres.', 'err');
-          return;
+  const modal = openModal({
+    title: '🔑 Cambiar mi contraseña',
+    body: modalBody,
+    footer: [
+      h('button', { class: 'btn', onclick: () => modal.close() }, 'Cancelar'),
+      h('button', {
+        class: 'btn primary',
+        onclick: async () => {
+          if (!inNew.value || inNew.value.length < 4) {
+            toast('La contraseña debe tener al menos 4 caracteres.', 'err');
+            return;
+          }
+          if (inNew.value !== inConfirm.value) {
+            toast('Las nuevas contraseñas no coinciden.', 'err');
+            return;
+          }
+          try {
+            await auth.cambiarPasswordPropia(inOld.value, inNew.value);
+            toast('¡Contraseña actualizada con éxito!');
+            modal.close();
+          } catch (e) {
+            toast(e.message, 'err');
+          }
         }
-        if (inNew.value !== inConfirm.value) {
-          toast('Las nuevas contraseñas no coinciden.', 'err');
-          return;
-        }
-        try {
-          await auth.cambiarPasswordPropia(inOld.value, inNew.value);
-          toast('¡Contraseña actualizada con éxito!');
-          close();
-        } catch (e) {
-          toast(e.message, 'err');
-        }
-      }
-    }, 'Guardar Nueva Clave'),
-    h('button', { class: 'btn', onclick: () => close() }, 'Cancelar')
-  ]);
+      }, 'Guardar Nueva Clave')
+    ]
+  });
 }
 
-// ---------- Arranque ----------
+// ---------- Arranque y Seguridad ----------
+window.addEventListener('error', e => {
+  console.error('Error de aplicación:', e);
+  toast(`Error: ${e.message || 'Ocurrió un problema inesperado'}`, 'err');
+});
+
+window.addEventListener('unhandledrejection', e => {
+  console.error('Promesa no controlada:', e.reason);
+  toast(`Error: ${e.reason?.message || e.reason || 'Fallo de red o sincronización'}`, 'err');
+});
+
 async function boot() {
-  await store.load();
-  auth.asegurarAdminInicial();
-  seedIfEmpty();
-  initTopbar();
+  try {
+    await store.load();
+    auth.asegurarAdminInicial();
+    seedIfEmpty();
+    initTopbar();
 
-  window.addEventListener('hashchange', route);
-  store.onChange(src => { if (src === 'remote') route(); });
+    window.addEventListener('hashchange', route);
+    store.onChange(src => { if (src === 'remote') route(); });
 
-  route();
-  drive.start();
+    route();
+    drive.start();
 
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  } catch (err) {
+    console.error('Error durante arranque:', err);
+    toast(`Error al inicializar la app: ${err.message}`, 'err');
   }
 }
 

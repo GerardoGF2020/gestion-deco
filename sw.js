@@ -1,9 +1,10 @@
 // Service worker: la app abre sin internet. Red primero (para recibir actualizaciones), caché como respaldo.
-const CACHE = 'gestion-deco-v1';
+const CACHE = 'gestion-deco-v3';
 const ASSETS = [
   './', 'index.html', 'css/styles.css', 'icon.svg', 'manifest.webmanifest',
-  'js/app.js', 'js/core/store.js', 'js/core/drive.js', 'js/core/auth.js', 'js/core/ui.js',
-  'js/data/seed-catalogo.js', 'js/modules/catalogo.js', 'js/modules/ajustes.js', 'js/modules/pendientes.js',
+  'js/app.js', 'js/core/store.js', 'js/core/drive.js', 'js/core/auth.js', 'js/core/ui.js', 'js/core/inventario.js',
+  'js/data/seed-catalogo.js', 'js/modules/inicio.js', 'js/modules/ventas.js', 'js/modules/stock.js',
+  'js/modules/compras.js', 'js/modules/catalogo.js', 'js/modules/admin.js', 'js/modules/ajustes.js',
 ];
 
 self.addEventListener('install', e => {
@@ -14,7 +15,7 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  if (req.method !== 'GET' || req.url.includes('/api/') || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
     fetch(req).then(res => {
       const copy = res.clone();

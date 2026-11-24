@@ -1,5 +1,7 @@
 // Utilidades de interfaz compartidas. Se construye el DOM sin innerHTML para evitar inyección de HTML.
 
+import * as auth from './auth.js';
+
 export function h(tag, attrs, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -81,4 +83,54 @@ export function field(label, input, hint) {
 
 export function copyText(text) {
   navigator.clipboard?.writeText(text).then(() => toast('Copiado'), () => toast('No se pudo copiar', 'err'));
+}
+
+export function pedirAutorizacionConClave({ titulo = 'Autorización para anular operación', detalle = '', onAutorizado }) {
+  const cur = auth.currentUser();
+  const tienePermiso = cur && (cur.rol === 'admin' || auth.can('anular', 2));
+
+  const usuarioInput = tienePermiso ? null : h('input', { placeholder: 'Usuario o correo del Administrador' });
+  const claveInput = h('input', { type: 'password', placeholder: 'Contraseña de autorización' });
+  const errorMsg = h('div', { class: 'notice warn', style: 'display:none; color:#c0392b; margin-top:8px;' });
+
+  const body = h('div', { class: 'stack', style: 'gap:12px;' },
+    h('p', { class: 'muted', style: 'margin:0;' }, detalle || 'Esta operación requiere confirmación por contraseña para registrarse en auditoría y revertir los cambios.'),
+    tienePermiso
+      ? h('div', { style: 'font-size:0.85rem; color:#475569; padding:8px 10px; background:#f1f5f9; border-radius:8px;' },
+          `Confirmando como: <strong>${cur.nombre}</strong> (${cur.rol})`)
+      : field('Administrador que autoriza', usuarioInput, 'Un usuario con permiso de anular debe identificarse'),
+    field('Contraseña de ingreso', claveInput),
+    errorMsg
+  );
+
+  const m = openModal({
+    title: `🔐 ${titulo}`,
+    body,
+    footer: [
+      h('button', { class: 'btn', onclick: () => m.close() }, 'Cancelar'),
+      h('button', {
+        class: 'btn danger',
+        onclick: async () => {
+          errorMsg.style.display = 'none';
+          const pass = claveInput.value;
+          const usr = tienePermiso ? cur.username : usuarioInput?.value;
+          if (!pass) {
+            errorMsg.textContent = 'Ingrese la contraseña';
+            errorMsg.style.display = 'block';
+            return;
+          }
+          const autorizante = await auth.validarClaveAutorizacion(pass, usr);
+          if (!autorizante) {
+            errorMsg.textContent = 'Contraseña incorrecta o usuario no habilitado para anular.';
+            errorMsg.style.display = 'block';
+            return;
+          }
+          m.close();
+          onAutorizado(autorizante);
+        }
+      }, 'Autorizar y Volver Atrás')
+    ]
+  });
+
+  setTimeout(() => (tienePermiso ? claveInput : usuarioInput || claveInput).focus(), 150);
 }

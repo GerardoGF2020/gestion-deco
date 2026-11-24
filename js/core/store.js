@@ -5,15 +5,18 @@
 const DB_NAME = 'gestion-deco';
 const STORE = 'kv';
 
-export const COLLECTIONS = ['proveedores', 'productos', 'compras', 'movimientos', 'clientes', 'ventas', 'usuarios'];
+export const SCHEMA = 2; // Subir cuando cambie la estructura; load() migra sin perder datos.
+export const COLLECTIONS = ['proveedores', 'productos', 'compras', 'movimientos', 'clientes', 'ventas', 'usuarios', 'gastos', 'auditoria'];
 
 // Permisos por módulo: 0 = sin acceso, 1 = ver, 2 = editar.
+// Funciones especiales (0 = no, 2 = sí): costos (ver costos y márgenes), anular (anular operaciones con clave), eliminar.
 export const ROLES_DEFAULT = {
-  admin:    { label: 'Administrador', perms: { catalogo: 2, compras: 2, stock: 2, ventas: 2, admin: 2 } },
-  compras:  { label: 'Compras',       perms: { catalogo: 2, compras: 2, stock: 1, ventas: 0, admin: 0 } },
-  deposito: { label: 'Depósito',      perms: { catalogo: 1, compras: 1, stock: 2, ventas: 1, admin: 0 } },
-  vendedor: { label: 'Vendedor',      perms: { catalogo: 1, compras: 0, stock: 1, ventas: 2, admin: 0 } },
-  lectura:  { label: 'Solo lectura',  perms: { catalogo: 1, compras: 1, stock: 1, ventas: 1, admin: 0 } },
+  admin:          { label: '👑 Administrador',                         perms: { catalogo: 2, compras: 2, stock: 2, ventas: 2, admin: 2, caja: 2, costos: 2, anular: 2, eliminar: 2 } },
+  operador_total: { label: '⭐ Todos los roles (Excepto Admin)',      perms: { catalogo: 2, compras: 2, stock: 2, ventas: 2, admin: 0, caja: 2, costos: 2, anular: 2, eliminar: 0 } },
+  vendedor:       { label: '💰 Vendedor',                              perms: { catalogo: 1, compras: 0, stock: 1, ventas: 2, admin: 0, caja: 0, costos: 0, anular: 0, eliminar: 0 } },
+  compras:        { label: '🛒 Compras',                               perms: { catalogo: 2, compras: 2, stock: 1, ventas: 0, admin: 0, caja: 0, costos: 2, anular: 0, eliminar: 0 } },
+  deposito:       { label: '📦 Depósito',                              perms: { catalogo: 1, compras: 1, stock: 2, ventas: 1, admin: 0, caja: 0, costos: 0, anular: 0, eliminar: 0 } },
+  lectura:        { label: '📄 Solo lectura',                          perms: { catalogo: 1, compras: 1, stock: 1, ventas: 1, admin: 0, caja: 0, costos: 0, anular: 0, eliminar: 0 } },
 };
 
 export const CONFIG_DEFAULT = {
@@ -75,28 +78,84 @@ async function idbSet(key, val) {
 
 // ---------- Estado ----------
 export function initEmpty() {
-  state = { schema: 1, config: structuredClone(CONFIG_DEFAULT) };
+  state = { schema: SCHEMA, config: structuredClone(CONFIG_DEFAULT) };
   COLLECTIONS.forEach(c => (state[c] = []));
   return state;
 }
 
+// Migración: solo AGREGA lo que falta. Nunca borra ni reescribe datos existentes.
+function migrate() {
+  COLLECTIONS.forEach(c => { if (!Array.isArray(state[c])) state[c] = []; });
+  if (!state.config) state.config = structuredClone(CONFIG_DEFAULT);
+  if ((state.schema || 1) < SCHEMA) state.schema = SCHEMA;
+}
+
 export async function load() {
   const saved = await idbGet('state').catch(() => null);
-  if (saved) {
-    state = saved;
-    COLLECTIONS.forEach(c => { if (!Array.isArray(state[c])) state[c] = []; });
-    if (!state.config) state.config = structuredClone(CONFIG_DEFAULT);
-  } else {
-    initEmpty();
+  if (saved) { state = saved; migrate(); } else initEmpty();
+  if (typeof fetch === 'function' && typeof location !== 'undefined' && location.protocol.startsWith('http')) {
+    try {
+      const res = await fetch('/api/sync');
+      if (res.ok) {
+        const remote = await res.json();
+        if (remote && remote.schema) merge(remote);
+      }
+    } catch (e) {}
   }
   return state;
 }
 
+export async function syncServer() {
+  if (practica || typeof fetch !== 'function' || typeof location === 'undefined' || !location.protocol.startsWith('http')) return;
+  try {
+    const res = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state)
+    });
+    if (res.ok) {
+      const remote = await res.json();
+      if (remote && remote.schema) merge(remote);
+    }
+  } catch (e) {}
+}
+
+// ---------- Modo práctica: nada de lo que se haga se guarda ni se sincroniza ----------
+let practica = null;
+export const isPractica = () => !!practica;
+export function startPractica() {
+  if (practica) return;
+  practica = structuredClone(state);
+  notify('practica');
+}
+export function endPractica() {
+  if (!practica) return;
+  state = practica; practica = null;
+  notify('practica');
+}
+
 function persist() {
+  if (practica) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     idbSet('state', state).catch(e => console.warn('No se pudo guardar localmente', e));
-  }, 150);
+    syncServer();
+  }, 250);
+}
+
+// Reemplaza todo por una copia de seguridad. Se renueva la fecha de cada registro
+// para que la restauración gane sobre lo que tengan los demás dispositivos.
+export function replaceState(s) {
+  state = s; migrate();
+  const now = Date.now();
+  COLLECTIONS.forEach(c => state[c].forEach(r => { r.updatedAt = now; }));
+  state.config.updatedAt = now;
+  persist(); notify('remote');
+}
+
+// Registro de auditoría (quién anuló o restauró qué).
+export function log(accion, detalle = '') {
+  return put('auditoria', { fecha: new Date().toISOString(), usuario: getLocal().name || getLocal().email || '', accion, detalle }, { silent: true });
 }
 
 export function onChange(fn) {
@@ -163,6 +222,7 @@ export function setConfig(patch) {
 // ---------- Fusión con datos remotos ----------
 // Devuelve { pulled, needsPush }: pulled = el estado local cambió; needsPush = hay datos locales más nuevos que los remotos.
 export function merge(remote) {
+  if (practica) return { pulled: false, needsPush: false };
   if (!remote || typeof remote !== 'object') return { pulled: false, needsPush: true };
   let pulled = false;
   let needsPush = false;

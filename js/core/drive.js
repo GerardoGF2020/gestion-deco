@@ -113,6 +113,7 @@ const uploadFile = (id, data) =>
   });
 
 async function runSync() {
+  if (store.isPractica()) return;
   const loc = store.getLocal();
   if (!loc.clientId || !loc.connected || !navigator.onLine) return idleStatus();
   setStatus('syncing');
